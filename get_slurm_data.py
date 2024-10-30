@@ -36,9 +36,6 @@ slurm_job_data = {}
 
 
 for job_id in tqdm(job_ids[first_half:-1]):
-    
-
-    
     # Run the 'sacct' command with job ID and format options
     command = ['sacct', '-j', str(job_id), '--format=Submit,Eligible,Start,End,Elapsed,JobID,JobName,State,AllocCPUs,TotalCPU,AveRSS,MaxRSS,NodeList']
     result = subprocess.run(command, capture_output=True, text=True)
