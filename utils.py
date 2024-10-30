@@ -3,6 +3,16 @@ import re
 
 # Define a function to expand and format node names
 def format_node_names(node_name):
+    """This function cleans the node names that we have
+    obtained from slurm data base. 
+    for example [tcn97, tcn99-tcn101] ==> tcn97, tcn99, tcn100, tcn101
+
+    Args:
+        node_name (str): _it is a string that we want to process_
+
+    Returns:
+        _string_: 
+    """
     # Check if the node name contains brackets (indicating range or list format)
     if '[' in node_name:
         # Extract prefix and the numbers part
@@ -27,6 +37,14 @@ def format_node_names(node_name):
     
     
 def get_list(file_path):
+    """Reads a file and returns its contents as a list of lines.
+
+    Args:
+        file_path (str): The path to the file to read.
+
+    Returns:
+        list of str: A list where each element is a line from the file.
+    """
     names = []
     with open(file_path, "r") as file:
         for line in file:
