@@ -1,8 +1,11 @@
 
 import re
+import pandas as pd
+import subprocess
 
-# Define a function to expand and format node names
-def format_node_names(node_name):
+
+
+def format_node_names(node_name: str) -> str: 
     """This function cleans the node names that we have
     obtained from slurm data base. 
     for example [tcn97, tcn99-tcn101] ==> tcn97, tcn99, tcn100, tcn101
@@ -54,3 +57,106 @@ def get_list(file_path):
                 names.append(line.split('.')[0])
 
     return names
+
+
+
+
+
+       
+
+def get_slurm_data(job_ids: list[int]) -> object:
+    """a function for getting data from slurm
+
+    Args:
+        job_ids (list[int]): list of job ids
+
+    Returns:
+        object: a pandas dataframe
+    """
+
+    slurm_job_data = {}
+
+    for job_id in job_ids:
+        # Run the 'sacct' command with job ID and format options
+        command = ['sacct', '-j', str(job_id),'--parsable',
+        '--format=Submit,Eligible,Start,End,Elapsed,JobID,JobName,State,AllocCPUs,TotalCPU,NodeList']
+        result = subprocess.run(command, capture_output=True, text=True)
+        
+        if result.stderr:
+            print("Standard Error:\n", result.stderr)
+        else:
+            slurm_job_data[job_id] = result.stdout
+        
+
+    df = pd.DataFrame(pd.Series(slurm_job_data))
+    df.index.name = 'job_id'
+    df.reset_index(inplace=True)
+    df.rename(columns= {0: 'feature'}, inplace=True)
+    return df
+
+
+
+def preprocess_slurm(df: object) -> object:
+    """processing the slurm data
+
+    Args:
+        df (object): a data frame with job id and the feature
+
+    Returns:
+        object: a dataframe with extracted features as its columns
+    """
+
+    df['feature'] = df['feature'].str.split('\n')
+    df['length_of_feature'] = [len(l) for l in df['feature'].tolist()]
+    # df['length_of_feature'].value_counts()[0:10]
+    
+    
+    
+ 
+    lower_bound = 0
+    upper_bound = len(df)
+    data_processed = []
+
+    for n in range(lower_bound, upper_bound):
+
+        len_feature = df.iloc[n, :]['length_of_feature']
+        if len_feature > 2:
+            job_id =int( df.iloc[n, :]['job_id'])
+            query_name = df.iloc[n, :]['feature'][0]
+            signal = df.iloc[n, :]['feature'][1:-1]
+            
+            
+            data = {'job_id': [job_id] * len(signal),
+                    'query_name': [query_name] * len(signal),
+                    'signal': signal}
+
+            data_processed.append(pd.DataFrame(data))
+
+    df = pd.concat(data_processed, axis=0)
+    df['query_name'] = df['query_name'].str.split('|')
+    df['signal'] = df['signal'].str.split('|')
+    # get the length of signal name column
+    df['length_of_query'] = [len(l) for l in df['query_name'].tolist()]
+    df['length_of_signal'] = [len(l) for l in df['signal'].tolist()]
+    
+    
+
+
+    signal_names = df['query_name'].iloc[0][0:-1]
+        # for the 13 signals
+    for i, signal_name in enumerate(signal_names):
+        df[signal_name] = df['signal'].apply(lambda x:x[i])
+        
+        
+        
+    df['formatted_node_names'] = df['NodeList'].apply(format_node_names)
+    df.drop(['query_name','signal', 'length_of_query',
+                 'length_of_signal', 'JobName'], axis=1, inplace=True)
+
+    df.rename(columns={"JobID":"Slurm_job_id"}, inplace=True)
+
+ 
+    df.sort_values(by='job_id', inplace=True)
+
+
+    return df
