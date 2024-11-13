@@ -96,7 +96,7 @@ def get_slurm_data(job_ids: list[int]) -> object:
 
 
 
-def preprocess_slurm(df: object) -> object:
+def preprocess_slurm(df: pd.DataFrame) -> pd.DataFrame:
     """processing the slurm data
 
     Args:
@@ -160,3 +160,40 @@ def preprocess_slurm(df: object) -> object:
 
 
     return df
+
+
+
+
+def get_idle_proportion(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
+
+    df_with_duration = df.copy()
+    # how long does a state last? we are ignoreing those samples outside of the time interval
+    df_with_duration['state_duration'] = df_with_duration.groupby(['node', time_col])['time'].diff(1).shift(-1)
+    # drop the rows that beccome Nan due to shift
+    df_with_duration = df_with_duration[~(df_with_duration['state_duration'].isna())]
+    
+    # compute the total time a node was in a state in a given inteval
+    df_temp = df_with_duration.groupby(['node', time_col, 'state' ], as_index=False)[['state_duration']].sum()
+    df_temp.sort_values(['node', time_col], inplace=True)
+    df_temp.rename(columns={'state_duration':'state_duration_in_interval'}, inplace=True)
+
+
+    # get the total time for all the states
+    df_total = df_temp.groupby(['node', time_col], as_index=False)['state_duration_in_interval'].sum().copy()
+    df_total.rename(columns={'state_duration_in_interval':'all_state_durations_in_interval'}, inplace=True)
+
+    # get the idle time for the states
+    df_idle = df_temp[(df_temp['state']=='idle')].copy()
+    df_idle.drop(columns='state', inplace=True)
+    df_idle.rename(columns={'state_duration_in_interval':'idle_duration'}, inplace=True)
+
+    # join the two data frame based on node and time
+    df_stat = pd.merge(df_idle, df_total, how='outer', on=['node', time_col])
+    df_stat.fillna(value=pd.Timedelta('0s'), inplace=True)
+    df_stat.sort_values(['node', time_col], inplace=True)
+
+    df_stat['idle_proportion'] = (df_stat['idle_duration'] / df_stat['all_state_durations_in_interval'])
+
+
+
+    return df_stat
