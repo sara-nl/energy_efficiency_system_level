@@ -196,4 +196,46 @@ def get_idle_proportion(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
 
 
 
-    return df_stat
+    return df_stat, df_idle, df_total
+
+
+
+
+
+def get_data_node_sinfo(prom_file_paths, time_interval, time_interval_name):
+    """ 
+    We need to change this function so that we can use pool.
+    for doing so
+    1) read only node and time from the parquet files
+    2) add the tag and get the last item
+    3) then for the given node and time go back and read only those rows from the parquet files
+    """
+    df_last_list = []
+    
+    for file_path in prom_file_paths:
+        # read a dataframe
+        df = pd.read_parquet(file_path)
+        # sort based on node and timestemp
+        df.sort_values(['node', 'timestamp'], inplace=True)
+        # drop duplicates
+        df.drop_duplicates(['node', 'timestamp'], inplace=True)
+
+        # turn the time to pandas time
+        df['time'] = pd.to_datetime(df['timestamp'], unit='s')
+        # add the interval tag
+        df[time_interval_name] = ((df['time'] )).dt.floor(freq=time_interval)
+        
+        # note the trick here!
+        df_last = df.groupby(['node', time_interval_name], as_index=False).tail(1).copy()
+        # save memory
+        del df
+        if len(prom_file_paths)>1:
+            df_last_list.append(df_last)
+        else:
+            df_last.drop_duplicates(['node', time_interval_name], inplace=True)
+            return df_last
+        
+    df_last = pd.concat(df_last_list, axis=0)
+    df_last.drop_duplicates(['node', time_interval_name], inplace=True)
+    return df_last
+        
