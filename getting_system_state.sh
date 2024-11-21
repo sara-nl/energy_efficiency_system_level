@@ -30,7 +30,7 @@ done
 
 #!/bin/bash
 
-for day in {6..30}   
+for day in {9..30}   
 do
     for i in {1..480}  
     do 

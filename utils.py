@@ -202,15 +202,11 @@ def get_idle_proportion(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
 
 
 
-def get_data_node_sinfo(prom_file_paths, time_interval, time_interval_name):
-    """ 
-    We need to change this function so that we can use pool.
-    for doing so
-    1) read only node and time from the parquet files
-    2) add the tag and get the last item
-    3) then for the given node and time go back and read only those rows from the parquet files
-    """
-    df_last_list = []
+def get_prom_average_node_sinfo(prom_file_paths, time_interval, time_interval_name):
+
+    # change this fucntion to only accept path and granularity for getting the average
+    
+    df_average_list = []
     
     for file_path in prom_file_paths:
         # read a dataframe
@@ -225,17 +221,49 @@ def get_data_node_sinfo(prom_file_paths, time_interval, time_interval_name):
         # add the interval tag
         df[time_interval_name] = ((df['time'] )).dt.floor(freq=time_interval)
         
-        # note the trick here!
-        df_last = df.groupby(['node', time_interval_name], as_index=False).tail(1).copy()
+        # average measuremnt
+        df_prom_average = df.groupby(['node', time_interval_name], as_index=False).mean(numeric_only=True).copy()
+        # drop the time stamps
+        df_prom_average.drop(columns=['timestamp'], inplace=True)
+        
         # save memory
         del df
+        # if there is only one file then:
         if len(prom_file_paths)>1:
-            df_last_list.append(df_last)
+            df_average_list.append(df_prom_average)
+            del df_prom_average
         else:
-            df_last.drop_duplicates(['node', time_interval_name], inplace=True)
-            return df_last
+            df_prom_average.drop_duplicates(['node', time_interval_name], inplace=True)
+            return df_prom_average
+    # put all the averages in a single dataframe
+    df_prom_average_all = pd.concat(df_average_list, axis=0)
+    # sort based on node and time interval name
+    df_prom_average_all.sort_values(['node', time_interval_name], inplace=True)
+    # do antoher group by to ensure that if there is overlap between the data then we get things right
+    df_prom_average = df_prom_average_all.groupby(['node', time_interval_name], 
+                                                  as_index=False).mean(numeric_only=True).copy()
+
+    
+    df_prom_average.drop_duplicates(['node', time_interval_name], inplace=True)
+    return df_prom_average
         
-    df_last = pd.concat(df_last_list, axis=0)
-    df_last.drop_duplicates(['node', time_interval_name], inplace=True)
-    return df_last
-        
+
+
+
+
+def get_jobs_data(job_table_path, apps_table_path):
+      df_jobs = pd.read_parquet(job_table_path)
+      df_apps = pd.read_parquet(apps_table_path)
+
+      # merget the data frames
+      df = pd.merge(left=df_jobs, right=df_apps,
+                  left_on=['id', 'step_id'], right_on=['job_id', 'step_id'])
+      # drop the id column since we have the job_id
+      df.drop('id', axis=1, inplace=True)
+      df.drop('app_id', axis=1, inplace=True, errors='ignore')
+      df['node_id'] = df['node_id'].str.split("\x00").str[0]
+      # change the time to pd date time for better readability
+      cols = ['start_time', 'end_time', 'start_mpi_time', 'end_mpi_time']
+      df[cols] = df[cols].apply(lambda x: pd.to_datetime(x, unit='s'))
+
+      return df
