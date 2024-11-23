@@ -16,5 +16,5 @@ time_col = 'time_1hour_interval'
 df_prom_average = get_prom_average_node_sinfo(all_prom_file_paths, MAP_TIME_COL[time_col], time_col)
 print('process is done')
 df_prom_average.rename(columns={'time_1hour_interval':'time'}, inplace=True)
-df_prom_average.to_parquet(folder_path_prom_data/'average_signal_prom'/'prom_average_data.parquet.gzip', compression='gzip')
+df_prom_average.to_parquet(folder_path_prom_data/'average_signal_prom'/'prom_average_data_Nov_23.parquet.gzip', compression='gzip')
 print('writing is done')
