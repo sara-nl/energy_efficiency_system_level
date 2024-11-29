@@ -4,6 +4,7 @@ MAP_TIME_COL = {'time_1hour_interval':pd.Timedelta('1h'),
                 'time_30min_interval':pd.Timedelta('30min'),
                 'time_2hour_interval':pd.Timedelta('2h'),
                 'time_3hour_interval':pd.Timedelta('3h'),
+                'time_4hour_interval':pd.Timedelta('4h'),
                 'time_6hour_interval':pd.Timedelta('6h'),
                 'time_12hour_interval':pd.Timedelta('12h'),
                 'time_day_interval':pd.Timedelta('1d')
@@ -28,3 +29,13 @@ NODE_TO_PARTITION_NAME = {
     for par_name, node_list in PARTITION_NAME_TO_NODE.items()
     for node in node_list
 }
+
+
+
+# price for electricity per kilo wat hour
+ELEC_PRICE_KWH = 0.30
+# CO2 emmission kg per kWh, we use the data from
+# reference: https://www.cbs.nl/nl-nl/achtergrond/2023/51/rendementen-en-co2-emissie-van-elektriciteitsproductie-in-nederland-update-2022
+CO2_EMISSION = 0.27
+
+KILO_WAT_CONVERSION = 1000

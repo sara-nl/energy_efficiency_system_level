@@ -4,6 +4,8 @@ import pandas as pd
 import subprocess
 
 
+from constant import KILO_WAT_CONVERSION, ELEC_PRICE_KWH, CO2_EMISSION, MAP_TIME_COL, NODE_TO_PARTITION_NAME
+
 
 def format_node_names(node_name: str) -> str: 
     """This function cleans the node names that we have
@@ -267,3 +269,58 @@ def get_jobs_data(job_table_path, apps_table_path):
       df[cols] = df[cols].apply(lambda x: pd.to_datetime(x, unit='s'))
 
       return df
+  
+  
+  
+  
+  
+def energy_motivation_rigourous(df: pd.DataFrame, df_idle_power_average: pd.DataFrame,
+                                time_col: str)-> tuple[pd.DataFrame, dict]:
+
+    
+    df_stat_highly_idle, _, _ = get_idle_proportion(df, time_col)
+
+
+    # turn the idle duration to hour
+    df_stat_highly_idle['idle_duration_hour'] = (df_stat_highly_idle['idle_duration'].dt.total_seconds()/3600)
+    
+    df_high_idle_with_average_power = pd.merge(left=df_stat_highly_idle, right=df_idle_power_average, 
+              how='left', on='node')
+
+    # use surf sys power and compute the idle kilo wat hour
+    df_high_idle_with_average_power['idle_kilo_watt_hour'] = (df_high_idle_with_average_power['idle_duration_hour']
+                                                            .multiply(df_high_idle_with_average_power['surf_sys_power_mean']
+                                                                    /KILO_WAT_CONVERSION, fill_value=0))
+        # compute the price for the kilo-wat hour
+    df_high_idle_with_average_power['financial_cost'] = (df_high_idle_with_average_power['idle_kilo_watt_hour'] 
+                                                                                            * ELEC_PRICE_KWH)
+    # add all the cost together
+    total_financial_cost = df_high_idle_with_average_power['financial_cost'].sum()
+
+    # compute Co2 emission for kilo-watt hour
+    df_high_idle_with_average_power['co2_emission'] = (df_high_idle_with_average_power['idle_kilo_watt_hour'] 
+                                                                                            * CO2_EMISSION)
+    # add all the emssion together
+    total_co2_emission = df_high_idle_with_average_power['co2_emission'].sum()
+
+    # add all the idle duration and energy usages together
+    total_year_idle = (df_high_idle_with_average_power['idle_duration_hour'].sum())/ (24 * 365)
+    total_power_idle = (df_high_idle_with_average_power['idle_kilo_watt_hour'].sum())
+    
+    df_temp = df_high_idle_with_average_power[['node', 'idle_duration_hour','idle_kilo_watt_hour',
+                                           'financial_cost', 'co2_emission']].copy()
+    # df_temp['normalized_financial_cost'] = df_temp['financial_cost']/total_financial_cost
+    # df_temp['normalized_co2_emission'] = df_temp['co2_emission']/total_co2_emission
+    df_temp['partition'] = df_temp['node'].apply(lambda x: NODE_TO_PARTITION_NAME.get(x, 'other'))
+    # df_stat_fin_co2_cost = df_temp.groupby('node_type', as_index=False)[['normalized_financial_cost', 
+    #                                                                      'normalized_co2_emission']].sum()
+
+
+    df_stat_fin_co2_cost = df_temp.groupby('partition', as_index=False)[['idle_duration_hour', 'idle_kilo_watt_hour',
+                                                                        'financial_cost','co2_emission']].sum()
+    total_data = {"total_year_idle":total_year_idle,
+                  "total_power_idle":total_power_idle,
+                  "total_financial_cost":total_financial_cost,
+                  "total_co2_emission": total_co2_emission}
+    
+    return df_stat_fin_co2_cost, total_data

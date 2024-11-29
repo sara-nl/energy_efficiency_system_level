@@ -1,21 +1,10 @@
-#!/bin/bash
 
-# we would like to get the system states every 15 seconds
-for day in {1..2}
-do
-for i in {1..10}
-do
-        echo "############################" >> system_analytics_2024/slurm_data/system_states/system_states_${day}.txt
-        sinfo -l >> system_analytics_2024/slurm_data/system_states/system_states_${day}.txt   
-        sleep 30  
-done
-done
 
 
 
 #!/bin/bash
 
-for day in {11..30}   
+for day in {16..30}   
 do
     for i in {1..488}  
     do 
@@ -30,7 +19,7 @@ done
 
 #!/bin/bash
 
-for day in {9..30}   
+for day in {13..30}   
 do
     for i in {1..480}  
     do 
@@ -44,7 +33,7 @@ done
 
 # change the resolution to 2 minutes
 
-for day in {7..30}   
+for day in {17..30}   
 do
     for i in {1..720}  
     do 
