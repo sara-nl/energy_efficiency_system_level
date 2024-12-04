@@ -4,7 +4,7 @@
 
 #!/bin/bash
 
-for day in {16..30}   
+for day in {23..40}   
 do
     for i in {1..488}  
     do 
@@ -19,7 +19,7 @@ done
 
 #!/bin/bash
 
-for day in {13..30}   
+for day in {20..40}   
 do
     for i in {1..480}  
     do 
@@ -33,7 +33,7 @@ done
 
 # change the resolution to 2 minutes
 
-for day in {17..30}   
+for day in {21..40}   
 do
     for i in {1..720}  
     do 
