@@ -7,7 +7,8 @@ MAP_TIME_COL = {'time_1hour_interval':pd.Timedelta('1h'),
                 'time_4hour_interval':pd.Timedelta('4h'),
                 'time_6hour_interval':pd.Timedelta('6h'),
                 'time_12hour_interval':pd.Timedelta('12h'),
-                'time_day_interval':pd.Timedelta('1d')
+                'time_day_interval':pd.Timedelta('1d'),
+                'time_week_interval':pd.Timedelta('7d')
                 }
 
 
