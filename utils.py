@@ -324,3 +324,24 @@ def energy_motivation_rigourous(df: pd.DataFrame, df_idle_power_average: pd.Data
                   "total_co2_emission": total_co2_emission}
     
     return df_stat_fin_co2_cost, total_data
+
+
+
+
+
+def add_time_tag(df):
+    # add the node type and get the regular nodes only
+    df['node_type'] = df['node'].str[0:3]
+    df = df[df['node_type'].isin(['fcn', 'gcn', 'tcn', 'hcn'])].copy()
+
+    # put the time in an interval: if time is in [start-end], we add a tag as start
+    df['time_30min_interval'] = (df['time']).dt.floor(freq='30min')
+    df['time_1hour_interval'] = (df['time']).dt.floor(freq='1h')
+    df['time_2hour_interval'] = (df['time']).dt.floor(freq='2h')
+    df['time_3hour_interval'] = (df['time']).dt.floor(freq='3h')
+    df['time_4hour_interval'] = (df['time']).dt.floor(freq='4h')
+    df['time_6hour_interval'] = (df['time']).dt.floor(freq='6h')
+    df['time_12hour_interval'] = (df['time']).dt.floor(freq='12h')
+    df['time_day_interval'] = (df['time']).dt.floor(freq='d')
+    df['time_week_interval'] = pd.PeriodIndex(df['time'], freq='W')
+    return df

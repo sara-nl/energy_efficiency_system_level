@@ -19,7 +19,7 @@ done
 
 #!/bin/bash
 
-for day in {27..90}   
+for day in {35..90}   
 do
     for i in {1..480}  
     do 
@@ -33,7 +33,7 @@ done
 
 # change the resolution to 2 minutes
 
-for day in {28..90}   
+for day in {36..90}   
 do
     for i in {1..720}  
     do 
