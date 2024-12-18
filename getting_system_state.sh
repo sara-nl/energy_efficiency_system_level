@@ -19,7 +19,7 @@ done
 
 #!/bin/bash
 
-for day in {35..90}   
+for day in {38..90}   
 do
     for i in {1..480}  
     do 

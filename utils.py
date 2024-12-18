@@ -2,6 +2,7 @@
 import re
 import pandas as pd
 import subprocess
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 
 from constant import KILO_WAT_CONVERSION, ELEC_PRICE_KWH, CO2_EMISSION, MAP_TIME_COL, NODE_TO_PARTITION_NAME
@@ -267,8 +268,22 @@ def get_jobs_data(job_table_path, apps_table_path):
       # change the time to pd date time for better readability
       cols = ['start_time', 'end_time', 'start_mpi_time', 'end_mpi_time']
       df[cols] = df[cols].apply(lambda x: pd.to_datetime(x, unit='s'))
+      
+      # Here I calculate the min time for an id and step id
+      df_start = pd.DataFrame(df.groupby('job_id')['start_time'].min()).reset_index()
+      df_end = pd.DataFrame(df.groupby('job_id')['end_time'].max()).reset_index()
+      df_time = pd.merge(left=df_start, right=df_end)
+
+      df_time.rename(columns={'start_time':'job_start_time', 
+                              'end_time':'job_end_time'}, inplace=True)
+      df = pd.merge(df, df_time, how='inner', on='job_id').copy()
+      df['job_start_time_date'] = df['job_start_time'].dt.date
 
       return df
+  
+  
+  
+  
   
   
   
@@ -345,3 +360,26 @@ def add_time_tag(df):
     df['time_day_interval'] = (df['time']).dt.floor(freq='d')
     df['time_week_interval'] = pd.PeriodIndex(df['time'], freq='W')
     return df
+
+
+
+
+def perform_grid_search(model_class_with_params, X_train, y_train, X_val, y_val, target_column):
+
+    # parameter_space = list(ParameterGrid(grid_params))
+    model_class = model_class_with_params['model_class']
+    del model_class_with_params['model_class']
+    
+        
+    model = model_class(**model_class_with_params)
+    print(model_class)
+    model.fit(X_train, y_train[target_column])
+    
+    y_val_pred = model.predict(X_val)
+    score = (mean_squared_error(y_val[target_column], y_val_pred))
+    
+    # grid_search_trials = pd.DataFrame({"params": parameter_space, "score": scores}).sort_values("score")
+    # best_params = grid_search_trials.iloc[0, 0]
+    # best_score = grid_search_trials.iloc[0, 1]
+
+    return {'model_class': f"{str(model).split('(')[0]}", "parameter": model_class_with_params, "score": score}
