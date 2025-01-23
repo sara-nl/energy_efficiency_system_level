@@ -16,9 +16,9 @@ def get_jobs_data(job_table_path, apps_table_path):
 
       # merget the data frames
       df = pd.merge(left=df_jobs, right=df_apps,
-                  left_on=['id', 'step_id'], right_on=['job_id', 'step_id'])
+                  left_on=['job_id', 'step_id'], right_on=['job_id', 'step_id'])
       # drop the id column since we have the job_id
-      df.drop('id', axis=1, inplace=True)
+      # df.drop('id', axis=1, inplace=True)
       df.drop('app_id', axis=1, inplace=True, errors='ignore')
       df['node_id'] = df['node_id'].str.split("\x00").str[0]
       # change the time to pd date time for better readability
