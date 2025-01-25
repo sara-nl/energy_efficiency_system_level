@@ -13,10 +13,10 @@ MAP_TIME_COL = {'time_1hour_interval':pd.Timedelta('1h'),
 
 
 
-PARTITION_NAME_TO_NODE = { 'NVIDIA_A100': ["gcn" + str(i) for i in range(4, 72)] + ["gcn2"],
-                            'NVIDIA_H100': ["gcn" + str(i) for i in range(73, 160)],
+PARTITION_NAME_TO_NODE = { 'NVIDIA_A100': ["gcn" + str(i) for i in range(4, 73)] + ["gcn2", "gcn3"],
+                            'NVIDIA_H100': ["gcn" + str(i) for i in range(73, 161)],
                             # this node list is taken from /etc/slurm/slurm.conf
-                            'AMD_ROME': ["tcn" + str(i) for i in range(4, 525)],
+                            'AMD_ROME': ["tcn" + str(i) for i in range(4, 526)],
                             'AMD_GENOA': ["tcn" + str(i) for i in range(527, 1311)],
                             # this node list is taken from /etc/slurm/slurm.conf
                             'himem_4tb': ['hcn1', 'hcn2'],
