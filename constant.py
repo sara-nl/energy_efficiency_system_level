@@ -32,6 +32,13 @@ NODE_TO_PARTITION_NAME = {
 }
 
 
+NODE_TO_PARTITION_NAME_SHORT = {
+    node: 'himem' if par_name in {'himem_4tb', 'himem_8tb'} else par_name
+    for par_name, node_list in PARTITION_NAME_TO_NODE.items()
+    for node in node_list
+}
+
+
 
 # price for electricity per kilo wat hour
 ELEC_PRICE_KWH = 0.30

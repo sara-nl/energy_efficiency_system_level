@@ -53,22 +53,24 @@ folder_path_slurm_data = Path('/projects/2/prjs1098/system_analytics_2024/slurm_
 folder_path_prom_data = Path('/projects/2/prjs1098/system_analytics_2024/prom_data')
 folder_path_EAR_data = Path('/projects/2/prjs1098/system_analytics_2024/ear_data')
 folder_path_saving_results = Path('./results')
+folder_path_for_fig_saving = Path('/projects/2/prjs1098//system_analytics_2024/figures_for_presentation')
+
 
 
 # for getting the up-to-date data run the clenaing_sinfo file
 # with the latest data from the system.
-file_sinfo = 'sinfo_cleaned_2025-01-09.parquet.gzip'
+file_sinfo = 'sinfo_cleaned_2025-01-29.parquet.gzip'
 df = pd.read_parquet(folder_path_slurm_data / file_sinfo)
 
 
 # this takes a bit of time, so we instead load the result
 # df_prom_average = get_prom_average_node_sinfo(all_prom_file_paths[0:2], map_time_col[time_col], time_col)
 df_prom_average = pd.read_parquet(folder_path_prom_data /'average_signal_prom'
-                                  /'prom_average_data_2025-01-09.parquet.gzip')
+                                  /'prom_average_data_2025-01-29.parquet.gzip')
 
 # get the latest tables from the EAR data base, this is not up to date. run get_ear_db_data ==> I wish I could change this!
-jobs_table_path = folder_path_EAR_data / 'jobs_2025-01-07.parquet.gzip'
-apps_table_path = folder_path_EAR_data / 'applications_2025-01-07.parquet.gzip'
+jobs_table_path = folder_path_EAR_data / 'jobs_2025-01-29.parquet.gzip'
+apps_table_path = folder_path_EAR_data / 'applications_2025-01-29.parquet.gzip'
 df_job_number_history= get_jobs_data(jobs_table_path, apps_table_path)
 print(df.sample(n=5), df_prom_average.sample(n=5), df_job_number_history.sample(n=5))
 
@@ -76,8 +78,9 @@ print(df.sample(n=5), df_prom_average.sample(n=5), df_job_number_history.sample(
 
 
 TRAIN_MODE = True
+scaling_for_feature = False
 # if TRAIN_MODE is False, ensure that the file exist in the work space
-trained_model_parameters = 'all_models_best_params_Jan_09.pickle'
+trained_model_parameters = 'all_models_best_params_Jan_30.pickle'
 
 # %%
 # remove the latest date from sinfo to align with promehtues
@@ -332,7 +335,7 @@ print(df_stat.sample(n=5))
 # %%
 TEST_DATA_LENGTH = pd.Timedelta('7days')
 VAL_DATA_LENGTH = pd.Timedelta('7days')
-MAX_DATE_OFFSET = pd.Timedelta('3days') # our sinfo is usually up-to-date, but data from other sources are not
+MAX_DATE_OFFSET = pd.Timedelta('2days') # our sinfo is usually up-to-date, but data from other sources are not
 
 
 test_upper_bound = (df_stat[time_col].max()) - MAX_DATE_OFFSET
@@ -387,10 +390,17 @@ categorical_transformer = Pipeline(
         ("encoder", OneHotEncoder(handle_unknown="infrequent_if_exist"))
     ]
 )
+
+
 numeric_exogenous_transformer = Pipeline(
-    steps=[("imputer", SimpleImputer(strategy="constant", fill_value=0)), ("scaler", StandardScaler())]
+    steps=[("imputer", SimpleImputer(strategy="constant", fill_value=0))]
 )
 
+if scaling_for_feature:
+    numeric_exogenous_transformer = Pipeline(
+        steps=[("imputer", SimpleImputer(strategy="constant", fill_value=0)), ("scaler", StandardScaler())]
+    )
+    
 numeric_endogenous_transformer = Pipeline(
     steps=[("imputer", SimpleImputer(strategy="median"))]
 )
@@ -556,10 +566,10 @@ y_test.drop(columns='label', inplace=True)
 # """
 
 
-NUM_ESTIMATORS = list(range(100, 2100, 100)) + [10, 50]
-LEARNING_RATES = np.concatenate((np.arange(0.1, 1, 0.1), np.linspace(0.001, 0.099, 5)))
-COL_SAMPLES = np.concatenate((np.arange(0.1, 1, 0.1), np.linspace(0.001, 0.099, 5)))
-ALPHAS = np.linspace(0.0001, 10**4, 20)
+NUM_ESTIMATORS = list(range(100, 1000, 100)) + [10, 50]
+LEARNING_RATES = np.concatenate((np.arange(0.1, 1, 0.05), np.linspace(0.001, 0.099, 5)))
+COL_SAMPLES = np.concatenate((np.arange(0.1, 1, 0.05), np.linspace(0.001, 0.099, 5)))
+ALPHAS = np.linspace(0.000001, 10**4, 40)
 
 
 param_grids = [
@@ -637,7 +647,7 @@ for i, model_spec in df_model_score_best.iterrows():
     best_model_name = model_spec['model_class']
     best_model_class = map_name_to_class[best_model_name]
     best_params = model_spec['parameter']
-    
+    print(model_spec)
     # best_params['device'] = 'gpu'
     
     # Initialize the model with the best parameters
@@ -656,7 +666,7 @@ for i, model_spec in df_model_score_best.iterrows():
 simple Ensembling methods are presented here:
 """
 model = Lasso()
-parameters = {'alpha': [0.0001, 0.001, 0.01, 0.1, 1, 10, 100]}
+parameters = {'alpha': [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000]}
 reg = GridSearchCV(model, parameters, scoring='neg_mean_squared_error', cv=5)
 
 reg.fit(X=y_val.iloc[:,3:], y=y_val['target'])
@@ -675,7 +685,7 @@ y_pred = y_test.iloc[:, 3:].values
 
 # Compute the mean squared error
 mse = mean_squared_error(y_true=y_true, y_pred=y_pred, multioutput='raw_values')
-mae = mean_squared_error(y_true=y_true, y_pred=y_pred, multioutput='raw_values')
+mae = mean_absolute_error(y_true=y_true, y_pred=y_pred, multioutput='raw_values')
 
 
 
@@ -689,6 +699,7 @@ metric_styled = df_performance.style.format({"MAE": "{:.4f}",
                         }
                                            ).highlight_min(color='blue', subset=["MAE","MSE"])
 print(metric_styled)
+print(metric_styled.to_latex())
 
 # %%
 awful_model_to_not_show = ['Theta']
@@ -698,6 +709,9 @@ all_node_names = all_pred_df['node'].unique()
 random_nodes = np.random.choice(all_node_names, 4)
 random_nodes
 print(all_pred_df.head(n=6))
+
+
+# %%
 
 
 # Initialize subplots
@@ -729,6 +743,11 @@ fig.update_layout(
     height=len(random_nodes) * 150  # Adjust height based on number of partitions
 )
 
+
+output_path_pdf = folder_path_for_fig_saving / f"idle_prediction_for_sample_nodes.pdf"
+# output_path_png = folder_path_for_fig_saving / f"nodes_idle_partition_{time_col}.png"
+# fig.write_image(output_path_pdf)
+fig.write_image(output_path_pdf, format='pdf', engine="kaleido",  width=800, height=600)
 # print the Plotly figure
 fig.show()
 
@@ -848,10 +867,9 @@ fig.update_layout(
     showlegend=False
 )
 
-output_path_pdf = folder_path_saving_results / f"nodes_idle_partition_{time_col}.pdf"
-output_path_png = folder_path_saving_results / f"nodes_idle_partition_{time_col}.png"
+output_path_pdf = folder_path_for_fig_saving / f"nodes_idle_heatmap_prediction.pdf"
+# output_path_png = folder_path_for_fig_saving / f"nodes_idle_partition_{time_col}.png"
 fig.write_image(output_path_pdf)
-fig.write_image(output_path_png, scale=2)
 
 # Show the interactive heatmap
 fig.show()
@@ -863,13 +881,62 @@ fig.show()
 
 
 # %%
+y_test['partition'] = (y_test['node'].apply(lambda x: NODE_TO_PARTITION_NAME.get(x, 'other')))
+par_list = y_test['partition'].unique()
+
+
+
+# Initialize subplots
+fig = sp.make_subplots(rows=4, cols=2, subplot_titles=par_list)
+
+# Loop through partitions
+for i, par in enumerate(par_list):
+    df_temp = y_test.loc[y_test['partition'] == par]  # Select data for current partition
+    # pivot the table for plotting, call the function for getting longer intervals
+    df_stat_pivot = pd.pivot_table(df_temp, index=time_col, columns=['node'], values=['error'])
+    df_stat_pivot = df_stat_pivot.droplevel(level=0, axis=1).copy()
+    df_stat_pivot.index = df_stat_pivot.index.strftime("%Y-%m-%d %H:%M")
+
+    df_sorted_nodes = df_stat_pivot.copy()
+    # ascending_node_names = df_stat_pivot.sum(axis=0).sort_values(ascending=True).index.to_list()
+    # df_sorted_nodes = df_stat_pivot[ascending_node_names].copy()
+
+    fig.add_trace( go.Heatmap(
+        z=df_sorted_nodes.values,
+        x=df_sorted_nodes.columns,
+        y=df_sorted_nodes.index,
+        # colorscale='blackbody',
+        # colorscale='electric',
+                    colorscale='hot'), row=(i//2)+1, col=(i%2)+1)
+
+# Update layout (adjust as needed)
+fig.update_layout(
+    title="Idle Proportion by Node and Partition",
+    height=len(par_list) * 100  # Adjust height based on number of partitions
+)
+
+
+# output_path_pdf = folder_path_for_fig_saving / f"nodes_idle_partition_prediction.pdf"
+# # output_path_png = folder_path_for_fig_saving / f"nodes_idle_partition.png"
+# fig.write_image(output_path_pdf)
+
+# print the Plotly figure
+# fig.show()
+
+
+
+
+# %%
+# pd.set_option('print.max_colwidth', None)
+print(df_model_score_best)
+
+# %%
+
 # to do:
 """
 1) now we have a much cleaner pipline for preprocessing.
 it would be way better to integrate the preprocessing with the models and change the paramter for the 
 transformers as well
 """
-
-
 
 
